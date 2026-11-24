@@ -29,12 +29,16 @@ import {
   Download,
   Folder,
   FolderOpen,
+  GitHub,
+  HelpOutlined,
   LibraryMusic,
+  OpenInNew,
   Settings as SettingsIcon,
   WarningAmber,
 } from "@mui/icons-material";
 import { join } from "@tauri-apps/api/path";
 import { exists } from "@tauri-apps/plugin-fs";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   classifyYoutube,
   createPlaylistFolder,
@@ -104,6 +108,7 @@ export default function YtDlpView({ onOpenSettings }: { onOpenSettings?: () => v
   const [showNewFolderInSongDialog, setShowNewFolderInSongDialog] = useState(false);
   const [dialogError, setDialogError] = useState("");
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const counter = useRef(0);
   const parsed = url.trim() ? classifyYoutube(url) : null;
@@ -263,29 +268,106 @@ export default function YtDlpView({ onOpenSettings }: { onOpenSettings?: () => v
 
   return (
     <Box sx={{ p: { xs: 2, sm: 3 }, height: "100%", overflow: "auto", maxWidth: 760, mx: "auto" }}>
-      {/* --- 1. yt-dlp Kurulum Uyarısı --- */}
-      {!isConfigured && (
+      {/* --- 1. yt-dlp Kurulum Uyarısı & Rehber --- */}
+      {(!isConfigured || showGuide) && (
         <Card
           variant="outlined"
           sx={{
             mb: 2.5,
-            borderColor: "warning.main",
+            borderColor: isConfigured ? "primary.main" : "warning.main",
             bgcolor: "action.hover",
             borderRadius: 3,
           }}
         >
           <CardContent sx={{ p: 2.5 }}>
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mb: 1 }}>
-              <WarningAmber color="warning" sx={{ fontSize: 28 }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                yt-dlp Kurulumu Gerekli
-              </Typography>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              sx={{ alignItems: "center", justifyContent: "space-between", mb: 1.5 }}
+            >
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
+                {isConfigured ? (
+                  <HelpOutlined color="primary" sx={{ fontSize: 26 }} />
+                ) : (
+                  <WarningAmber color="warning" sx={{ fontSize: 28 }} />
+                )}
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                  {isConfigured ? "yt-dlp & FFmpeg İndirme Rehberi" : "yt-dlp Kurulumu Gerekli"}
+                </Typography>
+              </Stack>
+              {isConfigured && (
+                <Button size="small" onClick={() => setShowGuide(false)}>
+                  Kapat
+                </Button>
+              )}
             </Stack>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              YouTube'dan tekli şarkı ve playlist indirebilmek için sisteminizdeki <b>yt-dlp.exe</b>{" "}
-              dosyasının bulunduğu klasörü seçmeniz gerekmektedir.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              YouTube'dan yüksek kaliteli (<b>.mp3</b>) şarkı ve çalma listesi indirebilmek için{" "}
+              <b>yt-dlp.exe</b> (ve MP3 dönüşümü için <b>ffmpeg.exe</b>) dosyalarını indirip aynı
+              klasöre koymanız yeterlidir:
             </Typography>
+
+            {/* Adım Adım Kurulum Rehberi */}
+            <Box
+              sx={{
+                p: 1.75,
+                mb: 2,
+                borderRadius: 2,
+                bgcolor: "background.paper",
+                border: 1,
+                borderColor: "divider",
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "primary.main" }}>
+                📖 Nasıl İndirilir ve Kurulur?
+              </Typography>
+              <Stack spacing={0.8}>
+                <Typography variant="body2" color="text.secondary">
+                  <b>1. Adım:</b> Aşağıdaki <b>"yt-dlp GitHub Releases"</b> butonuna tıklayın. Açılan
+                  sayfanın altındaki <b>Assets</b> bölümünden <b><code>yt-dlp.exe</code></b> dosyasını
+                  indirin.
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <b>2. Adım:</b> Bilgisayarınızda yeni bir klasör oluşturup (örneğin{" "}
+                  <code>Masaüstü\yt-dlp</code>) indirdiğiniz <code>yt-dlp.exe</code> dosyasını içine
+                  atın.
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <b>3. Adım (MP3 dönüşümü için önerilir):</b> <b>"FFmpeg GitHub Releases"</b> butonuna
+                  tıklayıp <b>Assets</b> kısmından{" "}
+                  <b><code>ffmpeg-master-latest-win64-gpl.zip</code></b> dosyasını indirin. ZIP
+                  içindeki <code>bin</code> klasöründe bulunan <b><code>ffmpeg.exe</code></b>{" "}
+                  dosyasını da <code>yt-dlp.exe</code>'nin yanına çıkarın.
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <b>4. Adım:</b> Aşağıdaki <b>"Klasör Seç"</b> butonuna basarak bu klasörü seçin.
+                </Typography>
+              </Stack>
+
+              <Stack direction="row" spacing={1.5} sx={{ mt: 2, flexWrap: "wrap", gap: 1 }}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<GitHub />}
+                  endIcon={<OpenInNew fontSize="inherit" />}
+                  onClick={() => openUrl("https://github.com/yt-dlp/yt-dlp/releases/latest")}
+                  sx={{ textTransform: "none" }}
+                >
+                  yt-dlp GitHub Releases (yt-dlp.exe)
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<GitHub />}
+                  endIcon={<OpenInNew fontSize="inherit" />}
+                  onClick={() => openUrl("https://github.com/yt-dlp/FFmpeg-Builds/releases/latest")}
+                  sx={{ textTransform: "none" }}
+                >
+                  FFmpeg GitHub Releases (ffmpeg.exe)
+                </Button>
+              </Stack>
+            </Box>
 
             <Box
               sx={{
@@ -424,16 +506,27 @@ export default function YtDlpView({ onOpenSettings }: { onOpenSettings?: () => v
 
         <Box sx={{ mt: 1, minHeight: 28, display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
           {isConfigured && (
-            <Chip
-              size="small"
-              variant="outlined"
-              icon={<AudioFile />}
-              label={
-                ffmpegFound
-                  ? "Format: MP3 (Yalnızca Ses • En Yüksek Kalite)"
-                  : "Format: M4A (Yalnızca Ses)"
-              }
-            />
+            <>
+              <Chip
+                size="small"
+                variant="outlined"
+                icon={<AudioFile />}
+                label={
+                  ffmpegFound
+                    ? "Format: MP3 (Yalnızca Ses • En Yüksek Kalite)"
+                    : "Format: M4A (Yalnızca Ses)"
+                }
+              />
+              <Chip
+                size="small"
+                variant={showGuide ? "filled" : "outlined"}
+                color={showGuide ? "primary" : "default"}
+                icon={<GitHub />}
+                label="yt-dlp GitHub & Kurulum Rehberi"
+                onClick={() => setShowGuide(g => !g)}
+                sx={{ cursor: "pointer" }}
+              />
+            </>
           )}
 
           {url.trim() &&

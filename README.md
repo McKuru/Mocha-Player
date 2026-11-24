@@ -29,6 +29,7 @@
   - `M`: Sesi kapat / aç
   - `S`: Karışık çalma (Shuffle)
   - `R`: Tekrar modu (Repeat)
+  - `F11`: Tam ekran modu (Fullscreen)
   - `Esc`: Oynatıcıdan o anki playliste, playlistten ana kütüphaneye hızlı dönüş
   - Windows kilit ekranı ve klavye medya tuşlarıyla tam uyum.
 

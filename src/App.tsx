@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Box, CssBaseline, IconButton, Tab, Tabs, ThemeProvider } from "@mui/material";
 import { Settings } from "@mui/icons-material";
+import { invoke } from "@tauri-apps/api/core";
 import { dirname, join } from "@tauri-apps/api/path";
 import { exists } from "@tauri-apps/plugin-fs";
 import { engine, Track } from "./audio/AudioEngine";
@@ -31,6 +32,15 @@ type TabId = "library" | "player" | "ytdlp";
 export default function App() {
   const ver = useStoreVersion("theme", "settings");
   const theme = useMemo(() => buildTheme(getThemeSettings()), [ver]);
+
+  // Pencerenin üst başlık çubuğunu (title bar) aktif temanın rengine ve koyu/açık moduna göre güncelle
+  useEffect(() => {
+    invoke("set_window_theme", {
+      bgHex: theme.palette.background.default,
+      textHex: theme.palette.text.primary,
+      isDark: theme.palette.mode === "dark",
+    }).catch(() => {});
+  }, [theme]);
 
   useSyncExternalStore(
     f => engine.subscribe(f),
@@ -127,9 +137,14 @@ export default function App() {
     }
   };
 
-  // Klavye Kısayolları (Esc, Space, Ok Tuşları, M, S, R)
+  // Klavye Kısayolları (F11, Esc, Space, Ok Tuşları, M, S, R)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "F11" || e.key === "F11") {
+        e.preventDefault();
+        invoke("toggle_fullscreen").catch(() => {});
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (
         target &&

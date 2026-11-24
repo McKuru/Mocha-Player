@@ -14,7 +14,8 @@
       {
         "title": "Mocha Player",
         "width": 1050,
-        "height": 720
+        "height": 720,
+        "theme": "Dark"
       }
     ],
     "security": {

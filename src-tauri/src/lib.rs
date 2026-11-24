@@ -218,6 +218,89 @@ async fn ytdlp_search_thumbnail(ytdlp_dir: String, query: String) -> Result<Stri
     .map_err(|e| e.to_string())?
 }
 
+/// F11 ile tam ekran (fullscreen) modunu açıp kapatır.
+#[tauri::command]
+fn toggle_fullscreen(window: tauri::WebviewWindow) -> Result<bool, String> {
+    let is_full = window.is_fullscreen().map_err(|e| e.to_string())?;
+    window
+        .set_fullscreen(!is_full)
+        .map_err(|e| e.to_string())?;
+    Ok(!is_full)
+}
+
+#[cfg(windows)]
+#[link(name = "dwmapi")]
+unsafe extern "system" {
+    fn DwmSetWindowAttribute(
+        hwnd: isize,
+        dw_attribute: u32,
+        pv_attribute: *const std::ffi::c_void,
+        cb_attribute: u32,
+    ) -> i32;
+}
+
+#[cfg(windows)]
+fn hex_to_colorref(hex: &str) -> Option<u32> {
+    let h = hex.trim().trim_start_matches('#');
+    if h.len() != 6 {
+        return None;
+    }
+    let r = u32::from_str_radix(&h[0..2], 16).ok()?;
+    let g = u32::from_str_radix(&h[2..4], 16).ok()?;
+    let b = u32::from_str_radix(&h[4..6], 16).ok()?;
+    // Windows COLORREF formatı: 0x00BBGGRR
+    Some(r | (g << 8) | (b << 16))
+}
+
+/// Pencerenin üst başlık çubuğunu (titlebar) aktif temanın rengine ve koyu/açık moduna göre günceller.
+#[tauri::command]
+fn set_window_theme(
+    window: tauri::WebviewWindow,
+    bg_hex: String,
+    text_hex: String,
+    is_dark: bool,
+) -> Result<(), String> {
+    let _ = window.set_theme(Some(if is_dark {
+        tauri::Theme::Dark
+    } else {
+        tauri::Theme::Light
+    }));
+
+    #[cfg(windows)]
+    if let Ok(hwnd) = window.hwnd() {
+        let handle = hwnd.0 as isize;
+        unsafe {
+            // DWMWA_USE_IMMERSIVE_DARK_MODE = 20
+            let dark_mode: i32 = if is_dark { 1 } else { 0 };
+            let _ = DwmSetWindowAttribute(
+                handle,
+                20,
+                &dark_mode as *const _ as *const std::ffi::c_void,
+                std::mem::size_of::<i32>() as u32,
+            );
+            // DWMWA_CAPTION_COLOR = 35
+            if let Some(caption_color) = hex_to_colorref(&bg_hex) {
+                let _ = DwmSetWindowAttribute(
+                    handle,
+                    35,
+                    &caption_color as *const _ as *const std::ffi::c_void,
+                    std::mem::size_of::<u32>() as u32,
+                );
+            }
+            // DWMWA_TEXT_COLOR = 36
+            if let Some(text_color) = hex_to_colorref(&text_hex) {
+                let _ = DwmSetWindowAttribute(
+                    handle,
+                    36,
+                    &text_color as *const _ as *const std::ffi::c_void,
+                    std::mem::size_of::<u32>() as u32,
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Frontend hatalarını/teşhis mesajlarını terminale yazar (hata ayıklama için).
 #[tauri::command]
 fn log_frontend(level: String, msg: String) {
@@ -253,6 +336,8 @@ pub fn run() {
             ytdlp_download,
             ytdlp_search_thumbnail,
             create_playlist_folder,
+            toggle_fullscreen,
+            set_window_theme,
             log_frontend
         ])
         .run(tauri::generate_context!())
