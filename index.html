@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mocha Player</title>
+    <style>
+      html, body { margin: 0; padding: 0; background-color: #1e1e2e; color: #cdd6f4; overflow: hidden; }
+      #boot-error { display: none; position: fixed; inset: 0; z-index: 99999; overflow: auto; padding: 24px;
+        background: #1e1e2e; color: #fab387; font: 13px/1.5 Consolas, monospace; white-space: pre-wrap; }
+    </style>
+    <script>
+      // React yüklenmeden önce oluşan hataları da ekranda göster (boş ekran yerine).
+      (function () {
+        function report(level, msg) {
+          try {
+            var t = window.__TAURI_INTERNALS__;
+            if (t && t.invoke) t.invoke("log_frontend", { level: level, msg: String(msg).slice(0, 4000) });
+          } catch (_) {}
+        }
+        window.__report = report;
+        var origErr = console.error;
+        console.error = function () {
+          try { report("console.error", Array.prototype.map.call(arguments, function (a) { return a && a.stack ? a.stack : String(a); }).join(" ")); } catch (_) {}
+          return origErr.apply(console, arguments);
+        };
+        function show(msg) {
+          report("error", msg);
+          var root = document.getElementById("root");
+          if (root && root.innerHTML.length > 0) return;
+          var el = document.getElementById("boot-error");
+          if (!el) { document.addEventListener("DOMContentLoaded", function () { show(msg); }); return; }
+          el.style.display = "block";
+          el.textContent += msg + "\n\n";
+        }
+        window.addEventListener("error", function (e) {
+          show("HATA: " + (e.error && e.error.stack ? e.error.stack : e.message));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = e.reason;
+          show("PROMISE HATASI: " + (r && r.stack ? r.stack : String(r)));
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="boot-error"></div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
